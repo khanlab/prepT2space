@@ -181,6 +181,7 @@ importT1 $in_t1w $subj
 fi
 
 # TODO
+# TODO: use -nac flag to initialize the translation in niftyreg using the header origins (sform)
 
 if [ ! -e $subj/t1/t1.brain.inorm.nii.gz ]
 then
