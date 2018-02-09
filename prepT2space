@@ -1,0 +1,265 @@
+#!/bin/bash
+# prepT2space: preprocessing for 7T 3D T2 SPACE data
+
+function die {
+ echo $1 >&2
+ exit 1
+}
+
+matching_T2w=
+participant_label=
+matching_T1w=
+n_cpus=8
+
+if [ "$#" -lt 3 ]
+then
+ echo "Usage: prepT2space bids_dir output_dir {participant,group} <optional arguments>"
+ echo "          [--participant_label PARTICIPANT_LABEL [PARTICIPANT_LABEL...]]"
+ echo "          [--matching_T2w MATCHING_PATTERN"
+ echo "          [--matching_T1w MATCHING_STRING"
+ echo "          [--n_cpus] NCPUS (for bedpost, default: 8) "
+ echo ""
+ exit 1
+fi
+
+
+in_bids=$1 
+out_folder=$2 
+analysis_level=$3
+
+
+shift 3
+
+
+
+while :; do
+      case $1 in
+     -h|-\?|--help)
+	     usage
+            exit
+              ;;
+     --n_cpus )       # takes an option argument; ensure it has been specified.
+          if [ "$2" ]; then
+                n_cpus=$2
+                  shift
+	      else
+              die 'error: "--n_cpus" requires a non-empty option argument.'
+            fi
+              ;;
+
+     --participant_label )       # takes an option argument; ensure it has been specified.
+          if [ "$2" ]; then
+                participant_label=$2
+                  shift
+	      else
+              die 'error: "--participant" requires a non-empty option argument.'
+            fi
+              ;;
+     --participant_label=?*)
+          participant_label=${1#*=} # delete everything up to "=" and assign the remainder.
+            ;;
+          --participant_label=)         # handle the case of an empty --participant=
+         die 'error: "--participant_label" requires a non-empty option argument.'
+          ;;
+     --matching_T2w )       # takes an option argument; ensure it has been specified.
+          if [ "$2" ]; then
+                matching_T2w=$2
+                  shift
+	      else
+              die 'error: "--matching_T2w" requires a non-empty option argument.'
+            fi
+              ;;
+     --matching_T2w=?*)
+          matching_T2w=${1#*=} # delete everything up to "=" and assign the remainder.
+            ;;
+          --matching_T2w=)         # handle the case of an empty --acq=
+         die 'error: "--matching_T2w" requires a non-empty option argument.'
+          ;;
+     --matching_T1w )       # takes an option argument; ensure it has been specified.
+          if [ "$2" ]; then
+                matching_T1w=$2
+                  shift
+	      else
+              die 'error: "--matching_T1w" requires a non-empty option argument.'
+            fi
+              ;;
+     --matching_T1w=?*)
+          matching_T1w=${1#*=} # delete everything up to "=" and assign the remainder.
+            ;;
+          --matching_T1w=)         # handle the case of an empty --acq=
+         die 'error: "--matching_T2w" requires a non-empty option argument.'
+          ;;
+
+
+      -?*)
+            printf 'WARN: Unknown option (ignored): %s\n' "$1" >&2
+              ;;
+     *)               # Default case: No more options, so break out of the loop.
+          break
+    esac
+  
+ shift
+  done
+
+
+shift $((OPTIND-1))
+
+
+echo matching_T2w=$matching_T2w
+echo participant_label=$participant_label
+
+if [ -e $in_bids ]
+then
+	in_bids=`realpath $in_bids`
+else
+	echo "ERROR: bids_dir $in_bids does not exist!"
+	exit 1
+fi
+
+
+if [ "$analysis_level" = "participant" ]
+then
+ echo " running participant level analysis"
+ else
+  echo "only participant level analysis is enabled"
+  exit 0
+fi
+
+T2w_prefix=uncorrected
+
+participants=$in_bids/participants.tsv
+
+work_folder=$out_folder/work
+derivatives=$out_folder #bids derivatives
+
+mkdir -p $work_folder $derivatives
+
+pushd $work_folder
+echo $participants
+
+if [ -n "$matching_T2w" ]
+then
+  searchstring_T2w=\*${matching_T2w}\*T2w.nii*
+else
+  searchstring_T2w=*T2w.nii*
+fi
+
+if [ -n "$matching_T1w" ]
+then
+  searchstring_t1w=\*${matching_T1w}\*T1w.nii*
+else
+  searchstring_t1w=*T1w.nii*
+fi
+
+
+
+if [ -n "$participant_label" ]
+then
+subjlist=`echo $participant_label | sed  's/,/\ /g'` 
+else
+subjlist=`tail -n +2 $participants | awk '{print $1}'`
+fi
+
+for subj in $subjlist 
+do
+
+#add on sub- if not exists
+if [ ! "${subj:0:4}" = "sub-" ]
+then
+  subj="sub-$subj"
+fi
+
+
+N_t1w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_t1w} | wc -l`
+in_t1w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_t1w} | head -n 1`
+
+echo Found $N_t1w matching T1w, using first found: $in_t1w
+if [ ! -e $subj/t1/t1.nii.gz ]
+then
+echo importT1 $in_t1w $subj
+importT1 $in_t1w $subj
+fi
+
+# TODO
+
+if [ ! -e $subj/t1/t1.brain.inorm.nii.gz ]
+then
+preprocT1 $subj
+fi
+ 
+NT2w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w} | wc -l`
+
+ if [ ! -e $subj/anat/uncorrected/T2w_$NT2w.nii.gz ]
+ then
+
+ echo NT2w=$NT2w
+echo Found $NT2w matching T2w, using all: 
+ eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}
+
+ echo "importDWI ${T2w_prefix} $NT2w `eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}` $subj"
+ importDWI ${T2w_prefix} $NT2w `eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}` $subj
+
+ fi
+
+ if [ ! -e $subj/anat/uncorrected_denoise/T2w_$NT2w.nii.gz ]
+ then
+ echo processDwiDenoise uncorrected $subj
+ processDwiDenoise uncorrected $subj
+ fi
+
+ if [ ! -e $subj/anat/uncorrected_denoise_unring/T2w_$NT2w.nii.gz ]
+ then
+ echo processUnring uncorrected_denoise $subj
+ processUnring uncorrected_denoise $subj
+ fi
+
+
+ if [ "$notopup" = 1 -o "$NT2w" = "1" ] 
+ then
+ 
+  if [ ! -e $subj/anat/uncorrected_denoise_unring_eddy/T2w.nii.gz ]
+  then
+   echo processEddyNoTopUp uncorrected_denoise_unring $subj
+   processEddyNoTopUp uncorrected_denoise_unring $subj
+  fi
+  
+   eddy=eddy
+ else
+
+  if [ ! -e $subj/anat/uncorrected_denoise_unring_topup/T2w.nii.gz ]
+  then 
+    echo processTopUp uncorrected_denoise_unring $subj
+    processTopUp uncorrected_denoise_unring $subj
+  fi
+
+  if [ ! -e $subj/anat/uncorrected_denoise_unring_topup_eddy/T2w.nii.gz ]
+  then
+    echo processEddy uncorrected_denoise_unring_topup $subj
+    processEddy uncorrected_denoise_unring_topup $subj
+  fi
+  eddy=topup_eddy
+ fi
+
+  if [ ! -e $subj/anat/uncorrected_denoise_unring_${eddy}_regT1/T2w.nii.gz ]
+  then
+  echo processRegT1 uncorrected_denoise_unring_$eddy $subj
+  processRegT1 uncorrected_denoise_unring_$eddy $subj
+  fi
+
+  
+  #continue running pipelines
+#  if [ "$bedpost" = 1 ]
+#  then 
+#    if [ ! -e $subj/anat/uncorrected_denoise_unring_${eddy}_regT1/bedpost.bedpostX/dyads1.nii.gz ]
+#    then
+#    echo processBedpost $n_cpus uncorrected_denoise_unring_${eddy}_regT1 $subj
+#    processBedpost $n_cpus uncorrected_denoise_unring_${eddy}_regT1 $subj
+#    fi
+#  fi 
+
+  processCleanupBIDS uncorrected_denoise_unring_${eddy}_regT1 $derivatives $subj
+
+done
+
+
+popd
