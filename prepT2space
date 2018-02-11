@@ -204,7 +204,9 @@ echo Found $N_brainmask matching T1w_brainmask, using all:
   # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_T1w_brainmask_dil5_dil5_dil5_dil5.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -inter 0
 # nonuniformity correction for T2w (see below for parameters)
   # N4BiasFieldCorrection -d 3 -r 1 -x sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -b [350] -c [500x500x400x400x400,0] -i sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -o sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz -v
-# get T2 brain mask from bet using N4 settings here
+# TODO: inhomogeneity correction is correctly applied, but not sure if there is a point in keeping the non masked region -- intensity differences
+# brain mask N4 corrected T2
+# get T2 brain mask from bet using N4 settings here (unfortunately not perfect due to intensity inhomogeneity)
   # bet sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet.nii.gz -f 0.2 -g 0.2 -v
 # binarize the mask (or automatically create with -m flag)
   # fslmaths sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet.nii.gz -bin sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet_brainmask.nii.gz
