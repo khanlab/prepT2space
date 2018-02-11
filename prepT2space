@@ -194,20 +194,25 @@ echo N_brainmask=$N_brainmask
 echo Found $N_brainmask matching T1w_brainmask, using all:
  eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_t1w_brainmask}
 
-# dilate brain mask for T1w
-# register T1w to T2w
-# apply dilated brain mask to T2w
-# nonuniformity correction for T2w
-# register T1w to T2w again
-# get T2 brain mask from bet
+# testdir: ~/graham/GitHub/prepT2space/sandbox
+# dilate brain mask for T1w (rough brain mask)
+# register T1w to T2w -rigOnly -nac
+  # reg_aladin -ref sub-C012_acq-MP2RAGE_rec-DIS3D_T1w.nii.gz -flo sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -aff SPACE_to_MP2RAGE_1.xfm -res SPACE_to_MP2RAGE_1.nii.gz -rigOnly -nac
+# also calculate inverted transform reg_transform -invAff input.xfm output.xfm
+  # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_1w.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res MP2RAGE_to_SPACE_1.nii.gz -inter 0
+# transform dilated brain mask to T2w space
+  # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_T1w_brainmask_dil5_dil5_dil5_dil5.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -inter 0
+# nonuniformity correction for T2w (see below for parameters)
+  # N4BiasFieldCorrection -d 3 -r 1 -x sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -b [350] -c [500x500x400x400x400,0] -i sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -o sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz -v
+# get T2 brain mask from bet using N4 settings here
+  # bet sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet.nii.gz -f 0.2 -g 0.2 -v
+# binarize the mask (or automatically create with -m flag)
+  # fslmaths sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet.nii.gz -bin sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet_brainmask.nii.gz
+# resample T2w mask into T1w space
+  # reg_resample -ref sub-C012_acq-MP2RAGE_rec-DIS3D_T1w.nii.gz -flo sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet_brainmask.nii.gz -aff SPACE_to_MP2RAGE_1.xfm -res SPACE_to_MP2RAGE_1_brainmask.nii.gz -inter 0 
 # use union of T1w and T2w masks for best masking
+  # good idea but ultimately still seems to fail in the same areas
 # copy final files to appropriate derivatives folder
-
-# TODO: N4 Bias Field Correction
-#N4BiasFieldCorrection -d 3 -r 1 -x $mask -b [350] -c [500x500x400x400x400,0] -i $input -o $nu_correct
-
-
-#  processCleanupBIDS uncorrected_denoise_unring_${eddy}_regT1 $derivatives $subj
 
 done
 
