@@ -214,8 +214,9 @@ eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_T1w_brainmask}
 # core pipeline functionality
 ######################################################################################
 
-# dilate brain mask for T1w (rough brain mask)
+# dilate brain mask for T1w
 # NOTE: brainmask from fmriprep suboptimal currently as not meant for 7T data
+#   Thus, using rough dilated brain mask for now
 dil5x1=$subj_work_dir/T1w_brainmask_dil5x1.nii.gz
 dil5x2=$subj_work_dir/T1w_brainmask_dil5x2.nii.gz
 dil5x3=$subj_work_dir/T1w_brainmask_dil5x3.nii.gz
@@ -241,7 +242,6 @@ T1w_to_T2w_rigid_nii=$subj_work_dir/T1w_to_T2w_rigid.nii.gz
 
 echo reg_aladin -ref $in_T1w -flo $in_T2w -aff $T2w_to_T1w_rigid_xfm -res $T2w_to_T1w_rigid_nii -rigOnly -nac
 reg_aladin -ref $in_T1w -flo $in_T2w -aff $T2w_to_T1w_rigid_xfm -res $T2w_to_T1w_rigid_nii -rigOnly -nac
-# reg_aladin -ref sub-C012_acq-MP2RAGE_rec-DIS3D_T1w.nii.gz -flo sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -aff SPACE_to_MP2RAGE_1.xfm -res SPACE_to_MP2RAGE_1.nii.gz -rigOnly -nac
 
 # also calculate inverted transform reg_transform -invAffine input.xfm output.xfm
 # legacy version of niftyreg; flags have changed with recent updates
@@ -249,13 +249,11 @@ echo reg_transform -invAffine $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
 reg_transform -ref $in_T1w -invAffine $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
 echo reg_resample -ref $in_T2w -flo $in_T1w -aff $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -NN 0
 reg_resample -ref $in_T2w -flo $in_T1w -aff $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -NN 0
-  # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_1w.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res MP2RAGE_to_SPACE_1.nii.gz -inter 0
 
 # transform dilated brain mask to T2w space
 T2w_rough_mask=$subj_work_dir/T2w_rough_brainmask.nii.gz
 echo reg_resample -ref $in_T2w -flo $dil5x4 -aff $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -NN 0
 reg_resample -ref $in_T2w -flo $dil5x4 -aff $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -NN 0
-  # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_T1w_brainmask_dil5_dil5_dil5_dil5.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -inter 0
 
 # nonuniformity correction for T2w (recommended settings by YX) and brain mask
 # not sure there is any point in keeping the non masked region as bet with mask input results in sharp intensity differences at boundary of mask
@@ -263,7 +261,6 @@ T2w_N4=$subj_work_dir/T2w_N4.nii.gz
 T2w_N4_roughbrain=$subj_work_dir/T2w_N4_roughbrain.nii.gz
 echo N4BiasFieldCorrection -d 3 -r 1 -x $T2w_rough_mask -b [350] -c [500x500x400x400x400,0] -i $in_T2w -o $T2w_N4 -v
 N4BiasFieldCorrection -d 3 -r 1 -x $T2w_rough_mask -b [350] -c [500x500x400x400x400,0] -i $in_T2w -o $T2w_N4 -v
-  # N4BiasFieldCorrection -d 3 -r 1 -x sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -b [350] -c [500x500x400x400x400,0] -i sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -o sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz -v
 echo fslmaths $T2w_N4 -mul $T2w_rough_mask $T2w_N4_roughbrain
 fslmaths $T2w_N4 -mul $T2w_rough_mask $T2w_N4_roughbrain
 
@@ -288,8 +285,24 @@ reg_resample -ref $in_T1w -flo $T2w_N4_roughbrain -aff $T2w_to_T1w_rigid_xfm -re
   # good idea but ultimately still seems to fail in the same areas
 ######################################################################################
 
-# TODO: copy final files to appropriate derivatives folder
+######################################################################################
+# final file copies
+######################################################################################
 
+# copy final files to appropriate derivatives folder
+# some string parsing
+T1w_fullpath=${in_T1w%/*}
+T1w_fullpath_file_no_nii=${in_T1w%.nii*}
+T1w_file_no_nii=${T1w_fullpath_file_no_nii##*/}
+
+T2w_fullpath=${in_T2w%/*}
+T2w_fullpath_file_no_nii=${in_T2w%.nii*}
+T2w_file_no_nii=${T2w_fullpath_file_no_nii##*/}
+
+echo cp $T2w_N4 $subj_final_dir/${T2w_file_no_nii}_preproc.nii.gz # T2w: N4 without masking
+echo cp $T2w_N4_roughbrain $subj_final_dir/${T2w_file_no_nii}_preproc_roughbrain.nii.gz # T2w: N4 + rough brain masked
+echo cp $T2w_to_T1w_N4_roughbrain $subj_final_dir/${T2w_file_no_nii}_preproc_space-T1w_roughbrain.nii.gz # T2w: N4 + rough brain mask in T1w space
+echo cp $T1w_roughbrain $subj_final_dir/${T1w_file_no_nii}_roughbrain.nii.gz # T1w: rough brain masked
 
 done
 
