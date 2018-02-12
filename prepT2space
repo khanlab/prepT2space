@@ -33,7 +33,9 @@ analysis_level=$4
 shift 4
 
 
-
+######################################################################################
+# parameter initialization (template: prepdwi)
+######################################################################################
 while :; do
       case $1 in
      -h|-\?|--help)
@@ -135,7 +137,7 @@ work_folder=$out_folder/work
 derivatives=$out_folder #bids derivatives
 
 echo mkdir -p $work_folder $derivatives
-#mkdir -p $work_folder $derivatives
+mkdir -p $work_folder $derivatives
 
 pushd $work_folder
 echo $participants
@@ -149,11 +151,11 @@ fi
 
 if [ -n "$matching_T1w" ]
 then
-  searchstring_t1w=\*${matching_T1w}\*MP2RAGE*DIS3D*T1w.nii* # default is DIS3D version
-  searchstring_t1w_brainmask=\*${matching_T1w}\*MP2RAGE*DIS3D*T1w_brainmask.nii* # default is DIS3D version
+  searchstring_T1w=\*${matching_T1w}\*MP2RAGE*DIS3D*T1w.nii* # default is DIS3D version
+  searchstring_T1w_brainmask=\*${matching_T1w}\*MP2RAGE*DIS3D*T1w_brainmask.nii* # default is DIS3D version
 else
-  searchstring_t1w=*MP2RAGE*DIS3D*T1w.nii*
-  searchstring_t1w_brainmask=*MP2RAGE*DIS3D*T1w_brainmask.nii*
+  searchstring_T1w=*MP2RAGE*DIS3D*T1w.nii*
+  searchstring_T1w_brainmask=*MP2RAGE*DIS3D*T1w_brainmask.nii*
 fi
 
 
@@ -168,44 +170,108 @@ fi
 for subj in $subjlist 
 do
 
+######################################################################################
+# variable initialization (template: prepdwi)
+######################################################################################
+
 #add on sub- if not exists
 if [ ! "${subj:0:4}" = "sub-" ]
 then
   subj="sub-$subj"
 fi
 
-N_t1w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_t1w} | wc -l`
-in_t1w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_t1w} | head -n 1` # default is the first in the list
+subj_work_dir=$work_folder/$subj/
+subj_final_dir=$derivatives/$subj/anat
 
-echo N_t1w=$N_t1w
-echo Found $N_t1w matching T1w, using all:
- eval ls $in_bids/$subj/anat/${subj}${searchstring_t1w}
+mkdir -p $subj_work_dir # for intermediate files
+mkdir -p $subj_final_dir # for final output
 
-NT2w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w} | wc -l`
+# Input T1w
+N_T1w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T1w} | wc -l`
+in_T1w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T1w} | head -n 1` # default is the first in the list
+echo N_T1w=$N_T1w
+echo Found $N_T1w matching T1w, using all:
+eval ls $in_bids/$subj/anat/${subj}${searchstring_T1w}
 
- echo NT2w=$NT2w
-echo Found $NT2w matching T2w, using all: 
- eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}
+# Input T2w
+N_T2w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w} | wc -l`
+in_T2w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w} | head -n 1`
+echo N_T2w=$N_T2w
+echo Found $N_T2w matching T2w, using all: 
+eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}
 
-N_brainmask=`eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_t1w_brainmask} | wc -l`
-in_brainmask=`eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_t1w_brainmask} | head -n 1`
-
+# Input T1w brainmask (from fmriprep)
+N_brainmask=`eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_T1w_brainmask} | wc -l`
+in_brainmask=`eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_T1w_brainmask} | head -n 1`
 echo N_brainmask=$N_brainmask
 echo Found $N_brainmask matching T1w_brainmask, using all:
- eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_t1w_brainmask}
+eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_T1w_brainmask}
 
 # testdir: ~/graham/GitHub/prepT2space/sandbox
+# test command line on graham: ~/GitHub/prepT2space/prepT2space ~/projects/rrg-akhanf/akhanf/cfmm-bids/data/Khan/SNSX_7T/ ~/project/bids/SNSX_7T/derivatives/fmriprep-1.0.4/ ~/project/bids/SNSX_7T/derivatives/prepT2space_test/ participant --participant_label sub-C016
+
+######################################################################################
+# core pipeline functionality
+######################################################################################
+
 # dilate brain mask for T1w (rough brain mask)
+# NOTE: brainmask from fmriprep suboptimal currently as not meant for 7T data
+dil5x1=$subj_work_dir/T1w_brainmask_dil5x1.nii.gz
+dil5x2=$subj_work_dir/T1w_brainmask_dil5x2.nii.gz
+dil5x3=$subj_work_dir/T1w_brainmask_dil5x3.nii.gz
+dil5x4=$subj_work_dir/T1w_brainmask_dil5x4.nii.gz
+T1w_roughbrain=$subj_work_dir/T1w_roughbrain.nii.gz
+
+echo fslmaths $in_brainmask -bin -kernel boxv 5 -dilM $dil5x1
+echo fslmaths $dil5x1 -bin -kernel boxv 5 -dilM $dil5x2
+echo fslmaths $dil5x2 -bin -kernel boxv 5 -dilM $dil5x3
+echo fslmaths $dil5x3 -bin -kernel boxv 5 -dilM $dil5x4
+echo fslmaths $in_T1w -mul $dil5x4 $T1w_roughbrain
+fslmaths $in_brainmask -bin -kernel boxv 5 -dilM $dil5x1
+fslmaths $dil5x1 -bin -kernel boxv 5 -dilM $dil5x2
+fslmaths $dil5x2 -bin -kernel boxv 5 -dilM $dil5x3
+fslmaths $dil5x3 -bin -kernel boxv 5 -dilM $dil5x4
+fslmaths $in_T1w -mul $dil5x4 $T1w_roughbrain
+
 # register T1w to T2w -rigOnly -nac
-  # reg_aladin -ref sub-C012_acq-MP2RAGE_rec-DIS3D_T1w.nii.gz -flo sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -aff SPACE_to_MP2RAGE_1.xfm -res SPACE_to_MP2RAGE_1.nii.gz -rigOnly -nac
+T2w_to_T1w_rigid_xfm=$subj_work_dir/T2w_to_T1w_rigid.xfm
+T2w_to_T1w_rigid_nii=$subj_work_dir/T2w_to_T1w_rigid.nii.gz
+T1w_to_T2w_rigid_xfm=$subj_work_dir/T1w_to_T2w_rigid.xfm
+T1w_to_T2w_rigid_nii=$subj_work_dir/T1w_to_T2w_rigid.nii.gz
+
+echo reg_aladin -ref $in_T1w -flo $in_T2w -aff $T2w_to_T1w_rigid_xfm -res $T2w_to_T1w_rigid_nii -rigOnly -nac
+reg_aladin -ref $in_T1w -flo $in_T2w -aff $T2w_to_T1w_rigid_xfm -res $T2w_to_T1w_rigid_nii -rigOnly -nac
+# reg_aladin -ref sub-C012_acq-MP2RAGE_rec-DIS3D_T1w.nii.gz -flo sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -aff SPACE_to_MP2RAGE_1.xfm -res SPACE_to_MP2RAGE_1.nii.gz -rigOnly -nac
+
 # also calculate inverted transform reg_transform -invAff input.xfm output.xfm
+echo reg_transform -invAff $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
+echo reg_resample -ref $in_T2w -flo $in_T1w -trans $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -inter 0
+reg_transform -invAff $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
+reg_resample -ref $in_T2w -flo $in_T1w -trans $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -inter 0
   # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_1w.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res MP2RAGE_to_SPACE_1.nii.gz -inter 0
+
 # transform dilated brain mask to T2w space
+T2w_rough_mask=$subj_work_dir/T2w_rough_brainmask.nii.gz
+echo reg_resample -ref $in_T2w -flo $dil5x4 -trans $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -inter 0
+reg_resample -ref $in_T2w -flo $dil5x4 -trans $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -inter 0
   # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_T1w_brainmask_dil5_dil5_dil5_dil5.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -inter 0
-# nonuniformity correction for T2w (see below for parameters)
+
+# nonuniformity correction for T2w (recommended settings by YX) and brain mask
+# not sure there is any point in keeping the non masked region as bet with mask input results in sharp intensity differences at boundary of mask
+T2w_N4=$subj_work_dir/T2w_N4.nii.gz
+T2w_N4_roughbrain=$subj_work_dir/T2w_N4_roughbrain.nii.gz
+echo N4BiasFieldCorrection -d 3 -r 1 -x $T2w_rough_mask -b [350] -c [500x500x400x400x400,0] -i $in_T2w -o $T2w_N4 -v
+N4BiasFieldCorrection -d 3 -r 1 -x $T2w_rough_mask -b [350] -c [500x500x400x400x400,0] -i $in_T2w -o $T2w_N4 -v
   # N4BiasFieldCorrection -d 3 -r 1 -x sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -b [350] -c [500x500x400x400x400,0] -i sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -o sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz -v
-# TODO: inhomogeneity correction is correctly applied, but not sure if there is a point in keeping the non masked region -- intensity differences
-# brain mask N4 corrected T2
+echo fslmaths $T2w_N4 -mul $T2w_rough_mask $T2w_N4_roughbrain
+fslmaths $T2w_N4 -mul $T2w_rough_mask $T2w_N4_roughbrain
+
+######################################################################################
+# future considerations
+#
+# TODO: consider redoing T2->T1 registration with the idea that the brain masking might make this even more optimal
+# TODO: consider using N4 corrected version to generate "better" T2 mask. Idea is to union optimal T2 with T1 mask for better masking
+#   seems to be failing in the same areas in practice though
 # get T2 brain mask from bet using N4 settings here (unfortunately not perfect due to intensity inhomogeneity)
   # bet sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet.nii.gz -f 0.2 -g 0.2 -v
 # binarize the mask (or automatically create with -m flag)
@@ -214,7 +280,10 @@ echo Found $N_brainmask matching T1w_brainmask, using all:
   # reg_resample -ref sub-C012_acq-MP2RAGE_rec-DIS3D_T1w.nii.gz -flo sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4_bet_brainmask.nii.gz -aff SPACE_to_MP2RAGE_1.xfm -res SPACE_to_MP2RAGE_1_brainmask.nii.gz -inter 0 
 # use union of T1w and T2w masks for best masking
   # good idea but ultimately still seems to fail in the same areas
+######################################################################################
+
 # copy final files to appropriate derivatives folder
+
 
 done
 
