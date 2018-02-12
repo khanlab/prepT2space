@@ -243,17 +243,18 @@ echo reg_aladin -ref $in_T1w -flo $in_T2w -aff $T2w_to_T1w_rigid_xfm -res $T2w_t
 reg_aladin -ref $in_T1w -flo $in_T2w -aff $T2w_to_T1w_rigid_xfm -res $T2w_to_T1w_rigid_nii -rigOnly -nac
 # reg_aladin -ref sub-C012_acq-MP2RAGE_rec-DIS3D_T1w.nii.gz -flo sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -aff SPACE_to_MP2RAGE_1.xfm -res SPACE_to_MP2RAGE_1.nii.gz -rigOnly -nac
 
-# also calculate inverted transform reg_transform -invAff input.xfm output.xfm
-echo reg_transform -invAff $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
-reg_transform -invAff $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
-echo reg_resample -ref $in_T2w -flo $in_T1w -trans $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -inter 0
-reg_resample -ref $in_T2w -flo $in_T1w -trans $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -inter 0
+# also calculate inverted transform reg_transform -invAffine input.xfm output.xfm
+# legacy version of niftyreg; flags have changed with recent updates
+echo reg_transform -invAffine $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
+reg_transform -ref $in_T1w -invAffine $T2w_to_T1w_rigid_xfm $T1w_to_T2w_rigid_xfm
+echo reg_resample -ref $in_T2w -flo $in_T1w -aff $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -NN 0
+reg_resample -ref $in_T2w -flo $in_T1w -aff $T1w_to_T2w_rigid_xfm -res $T1w_to_T2w_rigid_nii -NN 0
   # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_1w.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res MP2RAGE_to_SPACE_1.nii.gz -inter 0
 
 # transform dilated brain mask to T2w space
 T2w_rough_mask=$subj_work_dir/T2w_rough_brainmask.nii.gz
-echo reg_resample -ref $in_T2w -flo $dil5x4 -trans $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -inter 0
-reg_resample -ref $in_T2w -flo $dil5x4 -trans $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -inter 0
+echo reg_resample -ref $in_T2w -flo $dil5x4 -aff $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -NN 0
+reg_resample -ref $in_T2w -flo $dil5x4 -aff $T1w_to_T2w_rigid_xfm -res $T2w_rough_mask -NN 0
   # reg_resample -ref sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -flo sub-C012_acq-MP2RAGE_rec-DIS3D_T1w_brainmask_dil5_dil5_dil5_dil5.nii.gz -trans MP2RAGE_to_SPACE_1.xfm -res sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -inter 0
 
 # nonuniformity correction for T2w (recommended settings by YX) and brain mask
@@ -265,6 +266,11 @@ N4BiasFieldCorrection -d 3 -r 1 -x $T2w_rough_mask -b [350] -c [500x500x400x400x
   # N4BiasFieldCorrection -d 3 -r 1 -x sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_brainmask_rough.nii.gz -b [350] -c [500x500x400x400x400,0] -i sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w.nii.gz -o sub-C012_acq-SPACE_rec-DIS3D_run-01_T2w_N4.nii.gz -v
 echo fslmaths $T2w_N4 -mul $T2w_rough_mask $T2w_N4_roughbrain
 fslmaths $T2w_N4 -mul $T2w_rough_mask $T2w_N4_roughbrain
+
+# resample T2w roughbrain to T1w space
+T2w_to_T1w_N4_roughbrain=$subj_work_dir/T2w_to_T1w_N4_roughbrain.nii.gz
+echo reg_resample -ref $in_T1w -flo $T2w_N4_roughbrain -aff $T2w_to_T1w_rigid_xfm -res $T2w_to_T1w_N4_roughbrain -NN 0
+reg_resample -ref $in_T1w -flo $T2w_N4_roughbrain -aff $T2w_to_T1w_rigid_xfm -res $T2w_to_T1w_N4_roughbrain -NN 0
 
 ######################################################################################
 # future considerations
@@ -282,7 +288,7 @@ fslmaths $T2w_N4 -mul $T2w_rough_mask $T2w_N4_roughbrain
   # good idea but ultimately still seems to fail in the same areas
 ######################################################################################
 
-# copy final files to appropriate derivatives folder
+# TODO: copy final files to appropriate derivatives folder
 
 
 done
