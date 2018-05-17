@@ -1,13 +1,10 @@
 # prepT2space
 
-Preparing 7T T2 SPACE data for further processing.
-
-The initial version relies on output brainmask from fmriprep, which at this point is not optimized for 7T data and is thus imperfect. As a temporary solution, this mask is dilated to allow rough T2w masking for bias field correction and registration purposes. Future extensions will involve optimizing brainmasking.
+Preparing 7T T2 SPACE data for further processing including alignment with T1w.
 
 ## Input Parameters
 ```
 * input bids dir
-* input fmriprep dir
 * output derivatives dir
 ```
 
