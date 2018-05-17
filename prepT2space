@@ -1,6 +1,5 @@
 #!/bin/bash
 # prepT2space: preprocessing for 3D T2 SPACE data (7T Siemens scanner)
-# dependencies: fmriprep as input dir (for T1w brain mask)
 
 function die {
  echo $1 >&2
@@ -25,9 +24,8 @@ fi
 
 
 in_bids=$1 
-in_fmriprep=$2
-out_folder=$3 
-analysis_level=$4
+out_folder=$2 
+analysis_level=$3
 
 
 shift 4
@@ -129,8 +127,6 @@ then
   exit 0
 fi
 
-T2w_prefix=uncorrected
-
 participants=$in_bids/participants.tsv
 
 work_folder=$out_folder/work
@@ -144,21 +140,19 @@ echo $participants
 
 if [ -n "$matching_T2w" ]
 then
-  searchstring_T2w=\*${matching_T2w}\*SPACE*DIS3D*T2w.nii* # default is DIS3D version
+  searchstring_T2w=\*${matching_T2w}\*SPACE*T2w.nii*
 else
-  searchstring_T2w=*SPACE*DIS3D*T2w.nii*
+  searchstring_T2w=*SPACE*T2w.nii*
 fi
 
 if [ -n "$matching_T1w" ]
 then
-  searchstring_T1w=\*${matching_T1w}\*MP2RAGE*DIS3D*T1w.nii* # default is DIS3D version
-  searchstring_T1w_brainmask=\*${matching_T1w}\*MP2RAGE*DIS3D*T1w_brainmask.nii* # default is DIS3D version
+  searchstring_T1w=\*${matching_T1w}\*MP2RAGE*T1w.nii*
+  searchstring_T1w_brainmask=\*${matching_T1w}\*MP2RAGE*T1w_brainmask.nii*
 else
-  searchstring_T1w=*MP2RAGE*DIS3D*T1w.nii*
-  searchstring_T1w_brainmask=*MP2RAGE*DIS3D*T1w_brainmask.nii*
+  searchstring_T1w=*MP2RAGE*T1w.nii*
+  searchstring_T1w_brainmask=*MP2RAGE*T1w_brainmask.nii*
 fi
-
-
 
 if [ -n "$participant_label" ]
 then
@@ -200,7 +194,7 @@ echo N_T2w=$N_T2w
 echo Found $N_T2w matching T2w, using all: 
 eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}
 
-# Input T1w brainmask (from fmriprep)
+# Input T1w brainmask (from fmriprep) # TODO replace
 N_brainmask=`eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_T1w_brainmask} | wc -l`
 in_brainmask=`eval ls $in_fmriprep/fmriprep/$subj/anat/${subj}${searchstring_T1w_brainmask} | head -n 1`
 echo N_brainmask=$N_brainmask
