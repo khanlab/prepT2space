@@ -20,3 +20,8 @@ Preparing 7T T2 SPACE data for further processing including alignment with T1w.
       sub-<participant_label>_acq-SPACE_T2w_preproc_space-T1w.nii.gz
       sub-<participant_label>_acq-SPACE_T2w_preproc_target-T1w_affine.mat
 ```
+
+## Running on Graham
+```
+bidsBatch prepT2space_v0.0.1a /project/6007967/cfmm-bids/Khan/SNSX_7T/ ./derivatives/prepT2space_v0.0.1a/ participant -s sub-C016
+```
