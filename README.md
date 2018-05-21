@@ -10,7 +10,7 @@ Preparing 7T T2 SPACE data for further processing including alignment with T1w.
 
 ## Output File Structure
 ```
-<prepT2space-0.0.1>/
+<prepT2space-0.0.1b>/
   sub-<participant_label>/
     anat/
       sub-<participant_label>_acq-SPACE_T1w_brain.nii.gz
