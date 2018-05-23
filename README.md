@@ -23,5 +23,9 @@ Preparing 7T T2 SPACE data for further processing including alignment with T1w.
 
 ## Running on Graham
 ```
-bidsBatch prepT2space_v0.0.1a /project/6007967/cfmm-bids/Khan/SNSX_7T/ ./derivatives/prepT2space_v0.0.1a/ participant -s sub-C016
+# for multiple subjects (runs for all subjects in a participants.tsv file)
+bidsBatch prepT2space_v0.0.1d /project/6007967/cfmm-bids/Khan/SNSX_7T/derivatives/gradcorrect_0.0.1h/ /project/6007967/jclau/SNSX_7T/derivatives/single_subject_test/ participant
+
+# for a single subject (note: -s has to be right after bidsBatch call for now)
+bidsBatch -s C016 prepT2space_v0.0.1d /project/6007967/cfmm-bids/Khan/SNSX_7T/derivatives/gradcorrect_0.0.1h/ /project/6007967/jclau/SNSX_7T/derivatives/single_subject_test/ participant
 ```
