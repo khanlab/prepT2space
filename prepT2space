@@ -295,12 +295,12 @@ N4BiasFieldCorrection -d 3 -i $T1w_to_T2w_combined_scaled -o [$T1w_to_T2w_combin
 
 # Convert T1w and T2w to MINC format, and denoise T2w MRI
 echo "Step 5. Nonlocal-means denoise for T2w MRI"
-echo nii2mnc $T2w $T2w_mnc
-nii2mnc $T2w $T2w_mnc
-echo mincnlm $T2w_mnc $T2w_mnc_nlm
-mincnlm $T2w_mnc $T2w_mnc_nlm
-echo mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
-mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
+echo nii2mnc $T2w $T2w_mnc -clobber
+nii2mnc $T2w $T2w_mnc -clobber
+echo mincnlm $T2w_mnc $T2w_mnc_nlm -clobber
+mincnlm $T2w_mnc $T2w_mnc_nlm -clobber
+echo mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm -clobber
+mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm -clobber
 
 # Apply inhomogeneity field
 echo "Step 6. Apply obtained inhomogeneity field to denoised T2w MRI"
@@ -316,14 +316,14 @@ fsl5.0-flirt -in $T2w_N4 -out $T2w_to_T1w_proc1 -ref $T1w -init $T2w_to_T1w_mat 
 echo fsl5.0-flirt -in $T2w_N4 -out $T2w_to_T1w_proc2 -ref $T1w -init $T2w_to_T1w_mat -noclamp -applyxfm
 fsl5.0-flirt -in $T2w_N4 -out $T2w_to_T1w_proc2 -ref $T1w -init $T2w_to_T1w_mat -noclamp -applyxfm
 
-echo nii2mnc $T2w_to_T1w_proc1 $T2w_to_T1w_proc1_mnc
-nii2mnc $T2w_to_T1w_proc1 $T2w_to_T1w_proc1_mnc
-echo nii2mnc $T2w_to_T1w_proc2 $T2w_to_T1w_proc2_mnc
-nii2mnc $T2w_to_T1w_proc2 $T2w_to_T1w_proc2_mnc
-echo minccalc -expr "A[0]>=0?A[0]:A[1]" $T2w_to_T1w_proc1_mnc $T2w_to_T1w_proc2_mnc $T2w_to_T1w_proc_mnc -short
-minccalc -expr "A[0]>=0?A[0]:A[1]" $T2w_to_T1w_proc1_mnc $T2w_to_T1w_proc2_mnc $T2w_to_T1w_proc_mnc -short
-echo mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc
-mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc
+echo nii2mnc $T2w_to_T1w_proc1 $T2w_to_T1w_proc1_mnc -clobber
+nii2mnc $T2w_to_T1w_proc1 $T2w_to_T1w_proc1_mnc -clobber
+echo nii2mnc $T2w_to_T1w_proc2 $T2w_to_T1w_proc2_mnc -clobber
+nii2mnc $T2w_to_T1w_proc2 $T2w_to_T1w_proc2_mnc -clobber
+echo minccalc -expr "A[0]>=0?A[0]:A[1]" $T2w_to_T1w_proc1_mnc $T2w_to_T1w_proc2_mnc $T2w_to_T1w_proc_mnc -short -clobber
+minccalc -expr "A[0]>=0?A[0]:A[1]" $T2w_to_T1w_proc1_mnc $T2w_to_T1w_proc2_mnc $T2w_to_T1w_proc_mnc -short -clobber
+echo mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc -clobber
+mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc -clobber
 
 ######################################################################################
 # final file copies
@@ -331,17 +331,17 @@ mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc
 
 echo "Step 8. Move processing results to output folder and clean up"
 
-echo mv $T1w_N4_bet $FINAL_T1w_brain
-mv $T1w_N4_bet $FINAL_T1w_brain
-echo mv $T1w_N4_bet_mask $FINAL_T1w_brain_mask
-mv $T1w_N4_bet_mask $FINAL_T1w_brain_mask
+echo cp $T1w_N4_bet $FINAL_T1w_brain
+cp $T1w_N4_bet $FINAL_T1w_brain
+echo cp $T1w_N4_bet_mask $FINAL_T1w_brain_mask
+cp $T1w_N4_bet_mask $FINAL_T1w_brain_mask
 
-echo mv $T2w_N4 $FINAL_T2w_proc
-mv $T2w_N4 $FINAL_T2w_proc
-echo mv $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
-mv $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
+echo cp $T2w_N4 $FINAL_T2w_proc
+cp $T2w_N4 $FINAL_T2w_proc
+echo cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
+cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
 echo $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
-mv $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
+cp $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
 
 # TODO: clean up, flag to remove working directory (or not)
 
