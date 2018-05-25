@@ -200,6 +200,9 @@ echo N_T2w=$N_T2w
 echo Found $N_T2w matching T2w, using all: 
 eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}
 
+# Input custom template for coronal oblique resampling (hippocampal segmentation)
+custom_template=/opt/custom-templates/agile12i4_T2_space-0.3mm.nii.gz
+
 ######################################################################################
 # core pipeline functionality
 ######################################################################################
@@ -247,15 +250,22 @@ T2w_to_T1w_proc2_mnc=$subj_work_dir/${subj}_T2w_proc2.mnc
 T2w_to_T1w_proc_mnc=$subj_work_dir/${subj}_T2w_proc.mnc
 T2w_to_T1w_proc=$subj_work_dir/${subj}_T2w_proc.nii.gz
 
+# Custom template warping (for coronal oblique resampling / hippocampal segmentation)
+T2w_N4_to_custom_template=$subj_work_dir/${subj}_T2w_proc_to_custom_template.nii.gz
+T2w_N4_to_custom_template_xfm=$subj_work_dir/${subj}_T2w_proc_to_custom_template.xfm
+
 # Final OUTPUT (TODO: better BIDS derivatives compliance)
 FINAL_T1w_brain=$subj_final_dir/${subj}_acq-MP2RAGE_T1w_brain.nii.gz
 FINAL_T1w_brain_mask=$subj_final_dir/${subj}_acq-MP2RAGE_T1w_brainmask.nii.gz
 
-FINAL_T2w_proc=$subj_final_dir/${subj}_acq-SPACE_T2w_preproc.nii.gz
+FINAL_T2w_proc=$subj_final_dir/${subj}_acq-SPACE_proc-prepT2_T2w.nii.gz
 #FINAL_T2w_brain=$subj_final_dir/${subj}_acq-SPACE_T2w_brain.nii.gz
 FINAL_T2w_brain_mask=$subj_final_dir/${subj}_acq-SPACE_T2w_brainmask.nii.gz
-FINAL_T2w_to_T1w_proc=$subj_final_dir/${subj}_acq-SPACE_T2w_preproc_space-T1w.nii.gz
-FINAL_T2w_to_T1w_mat=$subj_final_dir/${subj}_acq-SPACE_T2w_preproc_target-T1w_affine.mat
+FINAL_T2w_to_T1w_proc=$subj_final_dir/${subj}_acq-SPACE_proc-prepT2_space-T1w_T2w.nii.gz
+FINAL_T2w_to_T1w_mat=$subj_final_dir/${subj}_acq-SPACE_proc-prepT2_target-T1w_affine.mat
+
+FINAL_T2w_N4_to_custom_template=$subj_final_dir/${subj}_acq-SPACE_proc-prepT2_space-agile12i4_T2w.nii.gz
+FINAL_T2w_N4_to_custom_template_xfm=$subj_final_dir/${subj}_acq-SPACE_proc-prepT2_target-agile12i4_rigid.xfm
 
 #####################################################################################
 
@@ -299,8 +309,8 @@ echo nii2mnc $T2w $T2w_mnc -clobber
 nii2mnc $T2w $T2w_mnc -clobber
 echo mincnlm $T2w_mnc $T2w_mnc_nlm -clobber
 mincnlm $T2w_mnc $T2w_mnc_nlm -clobber
-echo mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm -clobber
-mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm -clobber
+echo mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
+mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
 
 # Apply inhomogeneity field
 echo "Step 6. Apply obtained inhomogeneity field to denoised T2w MRI"
@@ -322,14 +332,20 @@ echo nii2mnc $T2w_to_T1w_proc2 $T2w_to_T1w_proc2_mnc -clobber
 nii2mnc $T2w_to_T1w_proc2 $T2w_to_T1w_proc2_mnc -clobber
 echo minccalc -expr "A[0]>=0?A[0]:A[1]" $T2w_to_T1w_proc1_mnc $T2w_to_T1w_proc2_mnc $T2w_to_T1w_proc_mnc -short -clobber
 minccalc -expr "A[0]>=0?A[0]:A[1]" $T2w_to_T1w_proc1_mnc $T2w_to_T1w_proc2_mnc $T2w_to_T1w_proc_mnc -short -clobber
-echo mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc -clobber
-mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc -clobber
+echo mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc
+mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc
+
+# Align proc with Agile12CoronalOblique average (for hippocampal subfield segmentation)
+#   currently using an internal custom template: agile12i4_T2_space-0.3mm.nii.gz
+echo "Step 8. Rigid registration of the processed T2 to coronal oblique orientation"
+echo reg_aladin -ref $custom_template -flo $T2w_N4 -rigOnly -aff $T2w_N4_to_custom_template_xfm -res $T2w_N4_to_custom_template -maxit 20
+reg_aladin -ref $custom_template -flo $T2w_N4 -rigOnly -aff $T2w_N4_to_custom_template_xfm -res $T2w_N4_to_custom_template -maxit 20
 
 ######################################################################################
 # final file copies
 ######################################################################################
 
-echo "Step 8. Move processing results to output folder and clean up"
+echo "Step 9. Copy processing results to output folder and clean up"
 
 echo cp $T1w_N4_bet $FINAL_T1w_brain
 cp $T1w_N4_bet $FINAL_T1w_brain
@@ -342,6 +358,11 @@ echo cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
 cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
 echo $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
 cp $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
+
+echo cp $T2w_N4_to_custom_template $FINAL_T2w_N4_to_custom_template
+cp $T2w_N4_to_custom_template $FINAL_T2w_N4_to_custom_template
+echo cp $T2w_N4_to_custom_template_xfm $FINAL_T2w_N4_to_custom_template_xfm
+cp $T2w_N4_to_custom_template_xfm $FINAL_T2w_N4_to_custom_template_xfm
 
 # TODO: clean up, flag to remove working directory (or not)
 
