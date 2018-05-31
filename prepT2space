@@ -3,8 +3,9 @@
 #   initial version prototyped by jclau and yxiao
 #
 # testdir: ~/graham/GitHub/prepT2space/sandbox
-
 # test command line on graham (regularInteractive --> neurogliaMincShell): ~/GitHub/prepT2space/prepT2space ~/projects/rrg-akhanf/cfmm-bids/Khan/SNSX_7T/derivatives/gradcorrect/ ~/GitHub/prepT2space/sandbox/test/ participant --participant_label=sub-C016
+# to visualize an individual subject relative to T1w: 
+#   SUBJID=C016; fslview ~/graham/projects/rrg-akhanf/cfmm-bids/Khan/SNSX_7T/derivatives/gradcorrect_0.0.1h/sub-${SUBJID}/anat/sub-${SUBJID}_acq-MP2RAGE_run-01_T1w.nii.gz ~/graham/project/SNSX_7T/derivatives/prepT2space_v0.0.1f_gradcorrected/sub-${SUBJID}/anat/sub-${SUBJID}_acq-SPACE_proc-prepT2_space-T1w_T2w.nii.gz &
 
 function die {
  echo $1 >&2
@@ -227,8 +228,8 @@ T1w_N4_bet_mask=$subj_work_dir/${subj}_T1w_N4_bet_mask.nii.gz
 T1w_to_T2w=$subj_work_dir/${subj}_T1w_to_T2w.nii.gz
 T1w_to_T2w_mat=$subj_work_dir/${subj}_T1w_to_T2w.mat
 T1w_to_T2w_mask=$subj_work_dir/${subj}_T1w_to_T2w_bet_mask.nii.gz
-T1w_to_T2w_mask_dil4=$subj_work_dir/${subj}_T1w_to_T2w_bet_mask_dil4.nii.gz
-T1w_to_T2w_mask_dil4_blur=$subj_work_dir/${subj}_T1w_to_T2w_bet_mask_dil4_blur.nii.gz
+T1w_to_T2w_mask_dil3=$subj_work_dir/${subj}_T1w_to_T2w_bet_mask_dil3.nii.gz
+T1w_to_T2w_mask_dil3_blur=$subj_work_dir/${subj}_T1w_to_T2w_bet_mask_dil3_blur.nii.gz
 T2w_to_T1w_mat=$subj_work_dir/${subj}_T2w_to_T1w.mat
 
 # T1w + T2w
@@ -289,10 +290,10 @@ echo fsl5.0-flirt -ref $T2w_N4 -out $T1w_to_T2w_mask -in $T1w_N4_bet_mask -init 
 fsl5.0-flirt -ref $T2w_N4 -out $T1w_to_T2w_mask -in $T1w_N4_bet_mask -init $T1w_to_T2w_mat -interp nearestneighbour -applyxfm
 
 # Process the masks
-echo ImageMath 3 $T1w_to_T2w_mask_dil4 MD $T1w_to_T2w_mask 3
-ImageMath 3 $T1w_to_T2w_mask_dil4 MD $T1w_to_T2w_mask 3
-#echo ImageMath 3 $T1w_to_T2w_mask_dil4_blur G $T1w_to_T2w_mask_dil4 1
-#ImageMath 3 $T1w_to_T2w_mask_dil4_blur G $T1w_to_T2w_mask_dil4 1
+echo ImageMath 3 $T1w_to_T2w_mask_dil3 MD $T1w_to_T2w_mask 3
+ImageMath 3 $T1w_to_T2w_mask_dil3 MD $T1w_to_T2w_mask 3
+#echo ImageMath 3 $T1w_to_T2w_mask_dil3_blur G $T1w_to_T2w_mask_dil3 1
+#ImageMath 3 $T1w_to_T2w_mask_dil3_blur G $T1w_to_T2w_mask_dil3 1
 
 # Combine the T2 and transformed T1 image
 echo "Step 4. Combining T2w MRI and transformed T1w MRI for N4 correction"
@@ -300,8 +301,8 @@ echo ImageMath 3 $T1w_to_T2w_combined m $T1w_to_T2w $T2w # multiply
 ImageMath 3 $T1w_to_T2w_combined m $T1w_to_T2w $T2w # multiply
 echo ImageMath 3 $T1w_to_T2w_combined_scaled / $T1w_to_T2w_combined 4000 # divide (scale)
 ImageMath 3 $T1w_to_T2w_combined_scaled / $T1w_to_T2w_combined 4000 # divide (scale)
-echo N4BiasFieldCorrection -d 3 -i $T1w_to_T2w_combined_scaled -o [$T1w_to_T2w_combined_scaled_N4,$T1w_to_T2w_combined_scaled_N4_biasfield] -b [250] -r 0 -s 4 -c [600x500x500x400x200,1e-5] -v -x $T1w_to_T2w_mask_dil4
-N4BiasFieldCorrection -d 3 -i $T1w_to_T2w_combined_scaled -o [$T1w_to_T2w_combined_scaled_N4,$T1w_to_T2w_combined_scaled_N4_biasfield] -b [250] -r 0 -s 4 -c [600x500x500x400x200,1e-5] -v -x $T1w_to_T2w_mask_dil4
+echo N4BiasFieldCorrection -d 3 -i $T1w_to_T2w_combined_scaled -o [$T1w_to_T2w_combined_scaled_N4,$T1w_to_T2w_combined_scaled_N4_biasfield] -b [250] -r 0 -s 4 -c [600x500x500x400x200,1e-5] -v -x $T1w_to_T2w_mask_dil3
+N4BiasFieldCorrection -d 3 -i $T1w_to_T2w_combined_scaled -o [$T1w_to_T2w_combined_scaled_N4,$T1w_to_T2w_combined_scaled_N4_biasfield] -b [250] -r 0 -s 4 -c [600x500x500x400x200,1e-5] -v -x $T1w_to_T2w_mask_dil3
 
 # Convert T1w and T2w to MINC format, and denoise T2w MRI
 echo "Step 5. Nonlocal-means denoise for T2w MRI"
