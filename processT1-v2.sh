@@ -53,8 +53,8 @@ echo "Step 3. Register T1 to T2 MRI"
 fsl5.0-flirt -ref $basename-T2-Nu1.nii.gz -out $basename-T1-to-T2.nii.gz -in $basename-T1.nii.gz  -omat $basename-T1-to-T2.mat -dof 6 -cost normmi
 fsl5.0-flirt -ref $basename-T2-Nu1.nii.gz -out $basename-T1-to-T2-mask.nii.gz -in $basename-T1-bet_mask.nii.gz -init $basename-T1-to-T2.mat -interp nearestneighbour -applyxfm
 # Process the masks
-ImageMath 3 $basename-T1-bet_mask-D.nii.gz MD $basename-T1-to-T2-mask.nii.gz 4
-ImageMath 3 $basename-T1-bet_mask-D_blur.nii.gz G $basename-T1-bet_mask-D.nii.gz 1
+ImageMath 3 $basename-T1-bet_mask-D.nii.gz MD $basename-T1-to-T2-mask.nii.gz 3
+#ImageMath 3 $basename-T1-bet_mask-D_blur.nii.gz G $basename-T1-bet_mask-D.nii.gz 1
 
 # combine the T2 and transformed T1 image
 echo "Step 4. Combining T2w MRI and transformed T1w MRI for N4 correction"
