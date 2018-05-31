@@ -28,8 +28,8 @@ then
 fi
 
 
-in_bids=$1 
-out_folder=$2 
+in_bids=$1
+out_folder=$2
 analysis_level=$3
 
 
@@ -103,7 +103,7 @@ while :; do
      *)               # Default case: No more options, so break out of the loop.
           break
     esac
-  
+
  shift
   done
 
@@ -160,14 +160,14 @@ fi
 
 if [ -n "$participant_label" ]
 then
-subjlist=`echo $participant_label | sed  's/,/\ /g'` 
+subjlist=`echo $participant_label | sed  's/,/\ /g'`
 else
 subjlist=`tail -n +2 $participants | awk '{print $1}'`
 fi
 
 echo $subjlist
 
-for subj in $subjlist 
+for subj in $subjlist
 do
 
 ######################################################################################
@@ -197,7 +197,7 @@ eval ls $in_bids/$subj/anat/${subj}${searchstring_T1w}
 N_T2w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w} | wc -l`
 T2w=`eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w} | head -n 1`
 echo N_T2w=$N_T2w
-echo Found $N_T2w matching T2w, using all: 
+echo Found $N_T2w matching T2w, using all:
 eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}
 
 # Input custom template for coronal oblique resampling (hippocampal segmentation)
@@ -289,10 +289,10 @@ echo fsl5.0-flirt -ref $T2w_N4 -out $T1w_to_T2w_mask -in $T1w_N4_bet_mask -init 
 fsl5.0-flirt -ref $T2w_N4 -out $T1w_to_T2w_mask -in $T1w_N4_bet_mask -init $T1w_to_T2w_mat -interp nearestneighbour -applyxfm
 
 # Process the masks
-echo ImageMath 3 $T1w_to_T2w_mask_dil4 MD $T1w_to_T2w_mask 4
-ImageMath 3 $T1w_to_T2w_mask_dil4 MD $T1w_to_T2w_mask 4
-echo ImageMath 3 $T1w_to_T2w_mask_dil4_blur G $T1w_to_T2w_mask_dil4 1
-ImageMath 3 $T1w_to_T2w_mask_dil4_blur G $T1w_to_T2w_mask_dil4 1
+echo ImageMath 3 $T1w_to_T2w_mask_dil4 MD $T1w_to_T2w_mask 3
+ImageMath 3 $T1w_to_T2w_mask_dil4 MD $T1w_to_T2w_mask 3
+#echo ImageMath 3 $T1w_to_T2w_mask_dil4_blur G $T1w_to_T2w_mask_dil4 1
+#ImageMath 3 $T1w_to_T2w_mask_dil4_blur G $T1w_to_T2w_mask_dil4 1
 
 # Combine the T2 and transformed T1 image
 echo "Step 4. Combining T2w MRI and transformed T1w MRI for N4 correction"
