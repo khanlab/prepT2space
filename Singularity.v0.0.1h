@@ -13,7 +13,7 @@ cp -Rv . $SINGULARITY_ROOTFS/src
 #########
 mkdir -p /opt/custom-templates
 curl -L --retry 5 https://www.dropbox.com/s/zi4tidxnvhqa3w4/agile12i4_T2_space-0.3mm.nii.gz  -o /opt/custom-templates/agile12i4_T2_space-0.3mm.nii.gz
-
+curl -L --retry 5 https://www.dropbox.com/s/rfzh9qvhxeq6g3y/snsx32_v0.1_i09_avg_T2w_inm.nii.gz  -o /opt/custom-templates/snsx32_v0.1_i09_avg_T2w_inm.nii.gz
 #########
 %environment
 
