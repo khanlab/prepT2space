@@ -1,6 +1,6 @@
 ORG=khanlab
 NAME=prepT2space
-VERSION = v0.0.1k
+VERSION = v0.0.1i
 
 SINGULARITY_NAME=$(ORG)_$(NAME)_$(VERSION)
 
