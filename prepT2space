@@ -317,6 +317,7 @@ echo mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
 mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
 
 # Apply inhomogeneity field
+# TODO: when refactoring, create new files for each processing step rather than rewrite original image.
 echo "Step 6. Apply obtained inhomogeneity field to denoised T2w MRI"
 echo ImageMath 3 $T2w_N4 / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
 ImageMath 3 $T2w_N4 / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
