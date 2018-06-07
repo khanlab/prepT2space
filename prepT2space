@@ -6,6 +6,7 @@
 # test command line on graham (regularInteractive --> neurogliaMincShell): ~/GitHub/prepT2space/prepT2space ~/projects/rrg-akhanf/cfmm-bids/Khan/SNSX_7T/derivatives/gradcorrect/ ~/GitHub/prepT2space/sandbox/test/ participant --participant_label=sub-C016
 # to visualize an individual subject relative to T1w: 
 #   SUBJID=C016; fslview ~/graham/projects/rrg-akhanf/cfmm-bids/Khan/SNSX_7T/derivatives/gradcorrect_0.0.1h/sub-${SUBJID}/anat/sub-${SUBJID}_acq-MP2RAGE_run-01_T1w.nii.gz ~/graham/project/SNSX_7T/derivatives/prepT2space_v0.0.1f_gradcorrected/sub-${SUBJID}/anat/sub-${SUBJID}_acq-SPACE_proc-prepT2_space-T1w_T2w.nii.gz &
+# new in version 0.0.2 bootstraps image intensity information from the initial template creation step for snsx32
 
 function die {
  echo $1 >&2
