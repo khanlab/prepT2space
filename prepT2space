@@ -203,6 +203,7 @@ eval ls $in_bids/$subj/anat/${subj}${searchstring_T2w}
 
 # Input custom template for coronal oblique resampling (hippocampal segmentation)
 custom_template=/opt/custom-templates/agile12i4_T2_space-0.3mm.nii.gz
+custom_template_snsx32=/opt/custom-templates/snsx32_v0.1_i09_avg_T2w_inm.nii.gz
 
 ######################################################################################
 # core pipeline functionality
@@ -242,6 +243,7 @@ T1w_to_T2w_combined_scaled_N4_biasfield=$subj_work_dir/${subj}_T1w_to_T2w_combin
 T2w_mnc=$subj_work_dir/${subj}_T2w.mnc
 T2w_mnc_nlm=$subj_work_dir/${subj}_T2w_nlm.mnc
 T2w_nlm=$subj_work_dir/${subj}_T2w_nlm.nii.gz
+T2w_nlm_inm=$subj_work_dir/${subj}_T2w_nlm_inm.nii.gz
 
 # Processed images T2->T1
 T2w_to_T1w_proc1=$subj_work_dir/${subj}_T2w_proc1.nii.gz
@@ -250,6 +252,7 @@ T2w_to_T1w_proc1_mnc=$subj_work_dir/${subj}_T2w_proc1.mnc
 T2w_to_T1w_proc2_mnc=$subj_work_dir/${subj}_T2w_proc2.mnc
 T2w_to_T1w_proc_mnc=$subj_work_dir/${subj}_T2w_proc.mnc
 T2w_to_T1w_proc=$subj_work_dir/${subj}_T2w_proc.nii.gz
+T2w_to_T1w_proc_inm=$subj_work_dir/${subj}_T2w_proc_inm.nii.gz
 
 # Custom template warping (for coronal oblique resampling / hippocampal segmentation)
 T2w_N4_to_custom_template=$subj_work_dir/${subj}_T2w_proc_to_custom_template.nii.gz
@@ -317,6 +320,7 @@ mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
 echo "Step 6. Apply obtained inhomogeneity field to denoised T2w MRI"
 echo ImageMath 3 $T2w_N4 / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
 ImageMath 3 $T2w_N4 / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
+ImageMath 3 $T2w_N4 HistogramMatch $custom_template_snsx32 $T2w_N4
 
 # Register T2 to T1 and fuse
 echo "Step 7. Refine T2w to T1w rigid registration with processed images"
@@ -355,8 +359,8 @@ cp $T1w_N4_bet_mask $FINAL_T1w_brain_mask
 
 echo cp $T2w_N4 $FINAL_T2w_proc
 cp $T2w_N4 $FINAL_T2w_proc
-echo cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
-cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
+echo cp $T2w_to_T1w_proc_inm $FINAL_T2w_to_T1w_proc
+cp $T2w_to_T1w_proc_inm $FINAL_T2w_to_T1w_proc
 echo $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
 cp $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
 
