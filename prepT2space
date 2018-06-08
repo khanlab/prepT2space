@@ -245,6 +245,8 @@ T2w_mnc=$subj_work_dir/${subj}_T2w.mnc
 T2w_mnc_nlm=$subj_work_dir/${subj}_T2w_nlm.mnc
 T2w_nlm=$subj_work_dir/${subj}_T2w_nlm.nii.gz
 T2w_nlm_inm=$subj_work_dir/${subj}_T2w_nlm_inm.nii.gz
+T2w_nlm_scaled=$subj_work_dir/${subj}_T2w_nlm_scaled.nii.gz
+T2w_nlm_scaled_histmatched=$subj_work_dir/${subj}_T2w_nlm_scaled_histmatched.nii.gz
 
 # Processed images T2->T1
 T2w_to_T1w_proc1=$subj_work_dir/${subj}_T2w_proc1.nii.gz
@@ -259,7 +261,7 @@ T2w_to_T1w_proc_inm=$subj_work_dir/${subj}_T2w_proc_inm.nii.gz
 T2w_N4_to_custom_template=$subj_work_dir/${subj}_T2w_proc_to_custom_template.nii.gz
 T2w_N4_to_custom_template_xfm=$subj_work_dir/${subj}_T2w_proc_to_custom_template.xfm
 
-# Final OUTPUT (TODO: better BIDS derivatives compliance)
+# Final OUTPUT
 FINAL_T1w_brain=$subj_final_dir/${subj}_acq-MP2RAGE_T1w_brain.nii.gz
 FINAL_T1w_brain_mask=$subj_final_dir/${subj}_acq-MP2RAGE_T1w_brainmask.nii.gz
 
@@ -318,21 +320,20 @@ echo mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
 mnc2nii -short -nii $T2w_mnc_nlm $T2w_nlm
 
 # Apply inhomogeneity field
-# TODO: when refactoring, create new files for each processing step rather than rewrite original image.
 echo "Step 6. Apply obtained inhomogeneity field to denoised T2w MRI"
-echo ImageMath 3 $T2w_N4 / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
-ImageMath 3 $T2w_N4 / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
-echo ImageMath 3 $T2w_N4 HistogramMatch $custom_template_snsx32 $T2w_N4
-ImageMath 3 $T2w_N4 HistogramMatch $custom_template_snsx32 $T2w_N4
+echo ImageMath 3 $T2w_nlm_scaled / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
+ImageMath 3 $T2w_nlm_scaled / $T2w_nlm $T1w_to_T2w_combined_scaled_N4_biasfield
+echo ImageMath 3 $T2w_nlm_scaled_histmatched HistogramMatch $T2w_nlm_scaled $custom_template_snsx32
+ImageMath 3 $T2w_nlm_scaled_histmatched HistogramMatch $T2w_nlm_scaled $custom_template_snsx32
 
 # Register T2 to T1 and fuse
 echo "Step 7. Refine T2w to T1w rigid registration with processed images"
-echo fsl5.0-flirt -in $T2w_N4 -ref $T1w_N4_bet -omat $T2w_to_T1w_mat -dof 6 -cost normmi
-fsl5.0-flirt -in $T2w_N4 -ref $T1w_N4_bet -omat $T2w_to_T1w_mat -dof 6 -cost normmi
-echo fsl5.0-flirt -in $T2w_N4 -out $T2w_to_T1w_proc1 -ref $T1w -init $T2w_to_T1w_mat -interp spline -noclamp -applyxfm
-fsl5.0-flirt -in $T2w_N4 -out $T2w_to_T1w_proc1 -ref $T1w -init $T2w_to_T1w_mat -interp spline -noclamp -applyxfm
-echo fsl5.0-flirt -in $T2w_N4 -out $T2w_to_T1w_proc2 -ref $T1w -init $T2w_to_T1w_mat -noclamp -applyxfm
-fsl5.0-flirt -in $T2w_N4 -out $T2w_to_T1w_proc2 -ref $T1w -init $T2w_to_T1w_mat -noclamp -applyxfm
+echo fsl5.0-flirt -in $T2w_nlm_scaled_histmatched -ref $T1w_N4_bet -omat $T2w_to_T1w_mat -dof 6 -cost normmi
+fsl5.0-flirt -in $T2w_nlm_scaled_histmatched -ref $T1w_N4_bet -omat $T2w_to_T1w_mat -dof 6 -cost normmi
+echo fsl5.0-flirt -in $T2w_nlm_scaled_histmatched -out $T2w_to_T1w_proc1 -ref $T1w -init $T2w_to_T1w_mat -interp spline -noclamp -applyxfm
+fsl5.0-flirt -in $T2w_nlm_scaled_histmatched -out $T2w_to_T1w_proc1 -ref $T1w -init $T2w_to_T1w_mat -interp spline -noclamp -applyxfm
+echo fsl5.0-flirt -in $T2w_nlm_scaled_histmatched -out $T2w_to_T1w_proc2 -ref $T1w -init $T2w_to_T1w_mat -noclamp -applyxfm
+fsl5.0-flirt -in $T2w_nlm_scaled_histmatched -out $T2w_to_T1w_proc2 -ref $T1w -init $T2w_to_T1w_mat -noclamp -applyxfm
 
 echo nii2mnc $T2w_to_T1w_proc1 $T2w_to_T1w_proc1_mnc -clobber
 nii2mnc $T2w_to_T1w_proc1 $T2w_to_T1w_proc1_mnc -clobber
@@ -346,8 +347,8 @@ mnc2nii -short -nii $T2w_to_T1w_proc_mnc $T2w_to_T1w_proc
 # Align proc with Agile12CoronalOblique average (for hippocampal subfield segmentation)
 #   currently using an internal custom template: agile12i4_T2_space-0.3mm.nii.gz
 echo "Step 8. Rigid registration of the processed T2 to coronal oblique orientation"
-echo reg_aladin -ref $custom_template -flo $T2w_N4 -rigOnly -aff $T2w_N4_to_custom_template_xfm -res $T2w_N4_to_custom_template -maxit 20
-reg_aladin -ref $custom_template -flo $T2w_N4 -rigOnly -aff $T2w_N4_to_custom_template_xfm -res $T2w_N4_to_custom_template -maxit 20
+echo reg_aladin -ref $custom_template -flo $T2w_nlm_scaled_histmatched -rigOnly -aff $T2w_N4_to_custom_template_xfm -res $T2w_N4_to_custom_template -maxit 20
+reg_aladin -ref $custom_template -flo $T2w_nlm_scaled_histmatched -rigOnly -aff $T2w_N4_to_custom_template_xfm -res $T2w_N4_to_custom_template -maxit 20
 
 ######################################################################################
 # final file copies
@@ -360,10 +361,10 @@ cp $T1w_N4_bet $FINAL_T1w_brain
 echo cp $T1w_N4_bet_mask $FINAL_T1w_brain_mask
 cp $T1w_N4_bet_mask $FINAL_T1w_brain_mask
 
-echo cp $T2w_N4 $FINAL_T2w_proc
-cp $T2w_N4 $FINAL_T2w_proc
-echo cp $T2w_to_T1w_proc_inm $FINAL_T2w_to_T1w_proc
-cp $T2w_to_T1w_proc_inm $FINAL_T2w_to_T1w_proc
+echo cp $T2w_nlm_scaled_histmatched $FINAL_T2w_proc
+cp $T2w_nlm_scaled_histmatched $FINAL_T2w_proc
+echo cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
+cp $T2w_to_T1w_proc $FINAL_T2w_to_T1w_proc
 echo $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
 cp $T2w_to_T1w_mat $FINAL_T2w_to_T1w_mat
 
